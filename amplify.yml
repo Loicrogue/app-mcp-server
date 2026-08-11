@@ -21,6 +21,8 @@ applications:
         preBuild:
           commands:
             - npm install --legacy-peer-deps --cache .npm --prefer-offline
+            - npm install --legacy-peer-deps --cache .npm --prefer-offline --prefix amplify/functions/mcp-server
+            - npm run build --prefix amplify/functions/mcp-server
         build:
           commands:
             - npx @aws-amplify/backend-cli pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
