@@ -1,9 +1,9 @@
 {
   "auth": {
-    "user_pool_id": "eu-central-1_IxTWgiZ5D",
+    "user_pool_id": "eu-central-1_9hoajykU0",
     "aws_region": "eu-central-1",
-    "user_pool_client_id": "18qle6fkpju0cjfm31i7na19fu",
-    "identity_pool_id": "eu-central-1:b6e4e2f3-85f7-48aa-a1af-eab1cefc71fa",
+    "user_pool_client_id": "41q4gdeea79ivn7du1gnse4olb",
+    "identity_pool_id": "eu-central-1:bc29f6d1-4183-4cd4-9170-a8112ea28fea",
     "mfa_methods": [],
     "standard_required_attributes": [
       "email"
@@ -26,7 +26,7 @@
     "unauthenticated_identities_enabled": true
   },
   "data": {
-    "url": "https://eqdl2ozbmbcfxoir4jil57i7au.appsync-api.eu-central-1.amazonaws.com/graphql",
+    "url": "https://jijkkcsrtjeg7jhh47o24uugq4.appsync-api.eu-central-1.amazonaws.com/graphql",
     "aws_region": "eu-central-1",
     "default_authorization_type": "AWS_IAM",
     "authorization_types": [
@@ -107,6 +107,6 @@
   },
   "version": "1.5",
   "custom": {
-    "mcpServerUrl": "https://wis2odctw35fd5rtqdtajeykea0uejjf.lambda-url.eu-central-1.on.aws/"
+    "mcpServerUrl": "https://gyxriftctnqoh6cotxncoxsrfy0wiqtm.lambda-url.eu-central-1.on.aws/"
   }
 }
