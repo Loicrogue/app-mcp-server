@@ -16,7 +16,7 @@ applications:
         paths:
           - node_modules/**/*
           - .npm/**/*
-  - backend:
+    backend:
       phases:
         build:
           commands:
