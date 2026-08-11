@@ -16,11 +16,11 @@ applications:
         paths:
           - node_modules/**/*
           - .npm/**/*
-    backend:
+  - backend:
       phases:
         build:
           commands:
             - npx amplify generate --branch $AWS_BRANCH --app-id $AWS_APP_ID
-  cache:
-    paths:
-      - .npm/**/*
+      cache:
+        paths:
+          - .npm/**/*
