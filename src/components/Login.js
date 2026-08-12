@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   confirmSignIn,
   confirmSignUp,
@@ -20,6 +20,25 @@ export default function Login({ onSignedIn }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Après une redirection SSO (Google), Cognito revient avec des paramètres
+  // dans l'URL : code (succès) ou error / error_description (échec). On
+  // affiche l'erreur éventuelle puis on nettoie l'URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errorDescription = params.get('error_description');
+    if (errorDescription) {
+      setError(decodeURIComponent(errorDescription));
+    }
+    if (
+      params.get('code') ||
+      params.get('error') ||
+      params.get('error_description') ||
+      params.get('state')
+    ) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();

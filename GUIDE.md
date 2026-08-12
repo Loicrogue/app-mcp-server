@@ -372,6 +372,9 @@ export const auth = defineAuth({
       google: {
         clientId: secret('GOOGLE_CLIENT_ID'),
         clientSecret: secret('GOOGLE_CLIENT_SECRET'),
+        scopes: ['profile', 'email'],   // 'email' est indispensable : sans ce
+                                        // scope Google ne renvoie pas l'email
+                                        // à Cognito → « attributes required »
       },
       callbackUrls: [
         'http://localhost:3000/',
@@ -477,8 +480,15 @@ Relance la commande de l'Étape 6 (le fichier est ignoré par git).
 **Google : erreur `redirect_uri_mismatch` au SSO**
 L'URI de redirection autorisée chez Google doit être **exactement**
 `https://<domaine>.auth.<région>.amazoncognito.com/oauth2/idpresponse`
-(Étape 10.4). Si le domaine change après un redéploiement, mets à jour le
+(Étape 10.5). Si le domaine change après un redéploiement, mets à jour le
 champ chez Google.
+
+**Google : `error=invalid_request` `attributes required: [email]` au retour**
+Cognito n'a pas réussi à récupérer l'email du compte Google. Cause la plus
+fréquente : le scope `email` manque sur l'IdP → Google ne renvoie que le
+`profile`. Vérifie la présence de `scopes: ['profile', 'email']` dans
+`google` (Étape 10.3) puis redéploie. Cause alternative : l'adresse Google
+n'est pas vérifiée chez Google.
 
 **Le déploiement du backend échoue : « secret not found »**
 Les secrets `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` doivent exister dans
