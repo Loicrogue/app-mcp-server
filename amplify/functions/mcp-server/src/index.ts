@@ -8,6 +8,10 @@ import { registry } from "./registry.js";
 // Mode stateless : chaque requête HTTP doit repartir d'un
 // serveur propre plutôt que de réutiliser un état partagé
 // entre deux appels différents.
+function registryPayload() {
+  return JSON.stringify(registry, null, 2);
+}
+
 function buildServer() {
   const server = new McpServer({ name: "mcp_server", version: "1.0.0" });
 
@@ -23,6 +27,18 @@ function buildServer() {
     })
   );
 
+  server.registerTool(
+    "get-servers-registry",
+    {
+      title: "Registre des serveurs MCP",
+      description: "Renvoie la liste des serveurs MCP disponibles et de leurs outils",
+      inputSchema: {},
+    },
+    async () => ({
+      content: [{ type: "text", text: registryPayload() }],
+    })
+  );
+
   server.registerResource(
     "servers-registry",
     "registry://servers", // URI arbitraire : sert d'identifiant unique pour cette ressource
@@ -32,7 +48,7 @@ function buildServer() {
       mimeType: "application/json",
     },
     async (uri) => ({
-      contents: [{ uri: uri.href, text: JSON.stringify(registry, null, 2) }],
+      contents: [{ uri: uri.href, text: registryPayload() }],
     })
   );
 

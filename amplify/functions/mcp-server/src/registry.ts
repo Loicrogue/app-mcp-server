@@ -3,6 +3,7 @@ export interface McpServerEntry {
   url: string;
   description: string;
   tools: string[];
+  ressources :  string[];
 }
 
 // ⚠️ CORE_BASE_URL : URL de base du serveur MCP déployé.
@@ -15,7 +16,8 @@ export const registry: { servers: McpServerEntry[] } = {
       id: "mcp-server-core",
       url: `${CORE_BASE_URL}/mcp`,
       description: "Serveur MCP principal du projet",
-      tools: ["Ping", "Registre des serveurs MCP"],
+      tools: ["ping", "get-servers-registry"],
+      ressources: ["registre des serveurs MCP"],
     },
     // Ajoute une entrée ici pour chaque nouveau serveur (ex: VoIP), une fois qu'il existe.
   ],

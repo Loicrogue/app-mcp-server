@@ -1,4 +1,16 @@
+/* light them */
 :root {
+  --bg: #fbfbfc;
+  --panel: #acb4c2;
+  --border: #334155;
+  --text: #0e0f0f;
+  --muted: #2c3544;
+  --accent: #384bf8;
+  --danger: #f87171;
+}
+
+/* dark theme */
+.dark {
   --bg: #0f172a;
   --panel: #1e293b;
   --border: #334155;
@@ -6,6 +18,15 @@
   --muted: #94a3b8;
   --accent: #38bdf8;
   --danger: #f87171;
+}
+
+.theme-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 99;
+  font-size: 18px;
+  padding: 6px 10px;
 }
 
 * {
@@ -20,7 +41,7 @@ body {
 }
 
 .app {
-  max-width: 860px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 24px;
 }
@@ -60,6 +81,7 @@ button {
 
 button:hover:not(:disabled) {
   border-color: var(--accent);
+  color: var(--accent);
 }
 
 button:disabled {
@@ -68,8 +90,7 @@ button:disabled {
 }
 
 button.active {
-  border-color: var(--accent);
-  color: var(--accent);
+  border: 2px solid var(--accent);
 }
 
 button.link {
@@ -154,7 +175,7 @@ input {
 
 .result {
   margin-top: 16px;
-  background: #0b1220;
+  background: var(--muted);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 14px;

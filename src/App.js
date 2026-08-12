@@ -5,9 +5,11 @@ import './awsConfig';
 import Login from './components/Login';
 import Catalogue from './components/Catalogue';
 import TestConsole from './components/TestConsole';
+import useTheme from './hooks/useTheme';
 import './App.css';
 
 function App() {
+  const [theme, toggleTheme] = useTheme();
   const [user, setUser] = useState(null);
   const [checking, setChecking] = useState(true);
   const [tab, setTab] = useState('catalogue');
@@ -42,6 +44,9 @@ function App() {
   if (!user) {
     return (
       <div className="app">
+        <button className="theme-toggle" onClick={toggleTheme}>
+          {theme === 'light' ? '☀️' : '🌙'}
+        </button>
         <Login onSignedIn={() => getCurrentUser().then(setUser).catch(() => setUser(null))} />
       </div>
     );
@@ -67,6 +72,9 @@ function App() {
           </button>
           <button className="link" onClick={handleSignOut}>
             Se déconnecter
+          </button>
+          <button onClick={toggleTheme}>
+            {theme === 'light' ? '☀️' : '🌙'}
           </button>
         </nav>
       </header>

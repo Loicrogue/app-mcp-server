@@ -66,7 +66,7 @@ export default function Login({ onSignedIn }) {
 
   return (
     <div className="auth-card">
-      <h2>Serveur MCP — Connexion</h2>
+      <h2>Serveur MCP - Connexion</h2>
 
       {mode === 'confirm' ? (
         <p className="info">
@@ -146,13 +146,19 @@ export default function Login({ onSignedIn }) {
 
       <div className="auth-switch">
         {mode === 'signin' ? (
-          <button className="link" onClick={() => { setMode('signup'); setError(''); }}>
-            Pas encore de compte ? S'inscrire
-          </button>
+          <>
+            <p>Pas encore de compte ?</p>
+            <button className="link" onClick={() => { setMode('signup'); setError(''); }}>
+              S'inscrire
+            </button>
+          </>
         ) : (
-          <button className="link" onClick={() => { setMode('signin'); setError(''); }}>
-            Déjà un compte ? Se connecter
-          </button>
+          <>
+            <p>Déjà un compte ?</p>
+            <button className="link" onClick={() => { setMode('signin'); setError(''); }}>
+              Se connecter
+            </button>
+          </>
         )}
 
         {mode === 'confirm' && (
