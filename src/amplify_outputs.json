@@ -4,7 +4,9 @@
     "aws_region": "eu-central-1",
     "user_pool_client_id": "41q4gdeea79ivn7du1gnse4olb",
     "identity_pool_id": "eu-central-1:bc29f6d1-4183-4cd4-9170-a8112ea28fea",
-    "mfa_methods": [],
+    "mfa_methods": [
+      "TOTP"
+    ],
     "standard_required_attributes": [
       "email"
     ],
@@ -15,13 +17,35 @@
       "email"
     ],
     "groups": [],
-    "mfa_configuration": "NONE",
+    "mfa_configuration": "OPTIONAL",
     "password_policy": {
       "min_length": 8,
       "require_lowercase": true,
       "require_numbers": true,
       "require_symbols": true,
       "require_uppercase": true
+    },
+    "oauth": {
+      "identity_providers": [
+        "GOOGLE"
+      ],
+      "redirect_sign_in_uri": [
+        "http://localhost:3000/",
+        "https://main.dw5aonh4td8cy.amplifyapp.com/"
+      ],
+      "redirect_sign_out_uri": [
+        "http://localhost:3000/",
+        "https://main.dw5aonh4td8cy.amplifyapp.com/"
+      ],
+      "response_type": "code",
+      "scopes": [
+        "phone",
+        "email",
+        "openid",
+        "profile",
+        "aws.cognito.signin.user.admin"
+      ],
+      "domain": "a94082cb0ac2ee3225db.auth.eu-central-1.amazoncognito.com"
     },
     "unauthenticated_identities_enabled": true
   },
