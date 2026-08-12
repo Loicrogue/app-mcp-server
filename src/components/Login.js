@@ -1,15 +1,19 @@
 import { useState } from 'react';
 import {
-  signIn,
-  signUp,
+  confirmSignIn,
   confirmSignUp,
   resendSignUpCode,
+  signIn,
+  signInWithRedirect,
+  signUp,
 } from 'aws-amplify/auth';
 
-// Connexion / inscription Cognito (email + mot de passe).
+// Connexion / inscription Cognito (email + mot de passe ou SSO Google).
 // À l'inscription, un code de vérification est envoyé par email.
+// Si l'utilisateur a activé le TOTP (onglet Sécurité), le login bascule
+// sur la saisie du code à 6 chiffres (CONFIRM_SIGN_IN_WITH_TOTP_CODE).
 export default function Login({ onSignedIn }) {
-  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'confirm'
+  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'confirm' | 'totp'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,8 +28,17 @@ export default function Login({ onSignedIn }) {
     if (mode === 'signin') {
       setLoading(true);
       try {
-        await signIn({ username: email, password });
-        onSignedIn();
+        const result = await signIn({ username: email, password });
+        const step = result.nextStep.signInStep;
+        if (step === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') {
+          setMode('totp');
+        } else if (step === 'CONFIRM_SIGN_UP') {
+          setMode('confirm');
+        } else if (step === 'DONE') {
+          onSignedIn();
+        } else {
+          setError(`Étape de connexion non gérée : ${step}`);
+        }
       } catch (err) {
         setError(err.message ?? String(err));
       } finally {
@@ -49,7 +62,7 @@ export default function Login({ onSignedIn }) {
       } finally {
         setLoading(false);
       }
-    } else {
+    } else if (mode === 'confirm') {
       // 'confirm' : valider le code reçu par email
       setLoading(true);
       try {
@@ -61,7 +74,25 @@ export default function Login({ onSignedIn }) {
       } finally {
         setLoading(false);
       }
+    } else {
+      // 'totp' : valider le code à 6 chiffres de l'app d'authentification
+      setLoading(true);
+      try {
+        await confirmSignIn({ challengeResponse: code });
+        onSignedIn();
+      } catch (err) {
+        setError(err.message ?? String(err));
+      } finally {
+        setLoading(false);
+      }
     }
+  }
+
+  function handleGoogle() {
+    setError('');
+    signInWithRedirect({ provider: 'Google' }).catch((err) =>
+      setError(err.message ?? String(err))
+    );
   }
 
   return (
@@ -73,14 +104,30 @@ export default function Login({ onSignedIn }) {
           Un code de vérification a été envoyé à <strong>{email}</strong>.
           Saisis-le ci-dessous.
         </p>
+      ) : mode === 'totp' ? (
+        <p className="info">
+          Saisis le code à 6 chiffres généré par ton application
+          d'authentification (TOTP).
+        </p>
       ) : (
         <p className="info">
-          Accès sécurisé par Amazon Cognito (email + mot de passe).
+          Accès sécurisé par Amazon Cognito (email + mot de passe ou compte
+          Google).
         </p>
       )}
 
+      {(mode === 'signin' || mode === 'signup') && (
+        <button type="button" className="google-btn" onClick={handleGoogle}>
+          Continuer avec Google
+        </button>
+      )}
+
+      {(mode === 'signin' || mode === 'signup') && (
+        <div className="auth-divider">ou</div>
+      )}
+
       <form onSubmit={handleSubmit}>
-        {mode !== 'confirm' && (
+        {mode !== 'confirm' && mode !== 'totp' && (
           <>
             <label>
               Email
@@ -119,7 +166,7 @@ export default function Login({ onSignedIn }) {
           </label>
         )}
 
-        {mode === 'confirm' && (
+        {(mode === 'confirm' || mode === 'totp') && (
           <label>
             Code de vérification
             <input
@@ -127,6 +174,8 @@ export default function Login({ onSignedIn }) {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               required
+              inputMode="numeric"
+              autoComplete="one-time-code"
             />
           </label>
         )}
@@ -140,7 +189,9 @@ export default function Login({ onSignedIn }) {
               ? 'Se connecter'
               : mode === 'signup'
                 ? 'Créer le compte'
-                : 'Valider le code'}
+                : mode === 'confirm'
+                  ? 'Valider le code'
+                  : 'Valider le code TOTP'}
         </button>
       </form>
 
@@ -152,22 +203,34 @@ export default function Login({ onSignedIn }) {
               S'inscrire
             </button>
           </>
-        ) : (
+        ) : mode === 'signup' ? (
           <>
             <p>Déjà un compte ?</p>
             <button className="link" onClick={() => { setMode('signin'); setError(''); }}>
               Se connecter
             </button>
           </>
-        )}
-
-        {mode === 'confirm' && (
-          <button
-            className="link"
-            onClick={() => resendSignUpCode({ username: email }).catch((err) => setError(err.message))}
-          >
-            Renvoyer le code
+        ) : mode === 'totp' ? (
+          <button className="link" onClick={() => { setMode('signin'); setError(''); }}>
+            Revenir à la connexion
           </button>
+        ) : (
+          <>
+            <p>Déjà un compte ?</p>
+            <button className="link" onClick={() => { setMode('signin'); setError(''); }}>
+              Se connecter
+            </button>
+            <button
+              className="link"
+              onClick={() =>
+                resendSignUpCode({ username: email }).catch((err) =>
+                  setError(err.message)
+                )
+              }
+            >
+              Renvoyer le code
+            </button>
+          </>
         )}
       </div>
     </div>

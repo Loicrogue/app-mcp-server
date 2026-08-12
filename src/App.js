@@ -5,6 +5,7 @@ import './awsConfig';
 import Login from './components/Login';
 import Catalogue from './components/Catalogue';
 import TestConsole from './components/TestConsole';
+import Security from './components/Security';
 import useTheme from './hooks/useTheme';
 import './App.css';
 
@@ -23,7 +24,10 @@ function App() {
 
     // Réagit aux événements d'authentification Amplify (connexion/déconnexion).
     const removeListener = Hub.listen('auth', ({ payload }) => {
-      if (payload.event === 'signedIn') {
+      if (
+        payload.event === 'signedIn' ||
+        payload.event === 'signInWithRedirect'
+      ) {
         getCurrentUser().then(setUser).catch(() => setUser(null));
       } else if (payload.event === 'signedOut') {
         setUser(null);
@@ -70,6 +74,12 @@ function App() {
           >
             Console de test
           </button>
+          <button
+            className={tab === 'security' ? 'active' : ''}
+            onClick={() => setTab('security')}
+          >
+            Sécurité
+          </button>
           <button className="link" onClick={handleSignOut}>
             Se déconnecter
           </button>
@@ -80,7 +90,9 @@ function App() {
       </header>
 
       <main>
-        {tab === 'catalogue' ? <Catalogue /> : <TestConsole />}
+        {tab === 'catalogue' && <Catalogue />}
+        {tab === 'console' && <TestConsole />}
+        {tab === 'security' && <Security username={user.username} />}
       </main>
     </div>
   );

@@ -21,12 +21,13 @@ app-mcp-server/
 │   ├── App.js                  # Écran principal (état de connexion + onglets)
 │   ├── amplify_outputs.json    # ⚠️ généré par le déploiement (Étape 6)
 │   └── components/
-│       ├── Login.js            # Connexion / inscription Cognito
+│       ├── Login.js            # Connexion / inscription (email, Google) + TOTP
 │       ├── Catalogue.js        # Liste des serveurs MCP + outils
-│       └── TestConsole.js      # Console d'appel de l'outil "ping"
+│       ├── TestConsole.js      # Console d'appel de l'outil "ping"
+│       └── Security.js         # Sécurité : activation du MFA TOTP (QR code)
 ├── amplify/                    # Backend Amplify Gen 2 (défini en code)
 │   ├── backend.ts              # Assemble auth + data + fonction MCP + URL Lambda
-│   ├── auth/resource.ts        # Cognito (login email + mot de passe)
+│   ├── auth/resource.ts        # Cognito (email/mdp, SSO Google, MFA TOTP)
 │   ├── data/resource.ts        # Base de données AppSync (modèle Todo)
 │   └── functions/mcp-server/   # La Lambda qui héberge le serveur MCP
 │       ├── resource.ts         # Config CDK de la Lambda + Lambda Web Adapter
@@ -122,8 +123,8 @@ export const auth = defineAuth({
 });
 ```
 > L'API `defineAuth` ne propose plus de champ « username » séparé : l'**email**
-> sert d'identifiant. Le **SSO (Google / GitHub)** s'ajoutera plus tard via
-> `externalProviders` (voir Étape 10).
+> sert d'identifiant. Le **SSO Google** et le **MFA TOTP** s'ajoutent via
+> `externalProviders` et `multifactor` (voir Étape 10).
 
 ### `amplify/data/resource.ts` - base de données
 ```ts
@@ -304,6 +305,7 @@ Ouvre http://localhost:3000 puis :
 3. Se connecter.
 4. Onglet **Catalogue** : le serveur `mcp-server` et son outil `ping` s'affichent.
 5. Onglet **Console de test** : envoyer un « ping » → réponse `pong: …`.
+6. Onglet **Sécurité** : activer le MFA TOTP (Étape 10) et tester le SSO Google.
 
 Pour contrôler le backend sans le front, l'équivalent en `curl` :
 ```
@@ -314,17 +316,137 @@ curl -X POST "https://<URL_LAMBDA>/mcp" \
 
 ---
 
-## Étape 10 - Sécurisation (à faire avant la mise en production)
+## Étape 10 - SSO Google + MFA TOTP
 
-À ce stade, l'URL de la Lambda MCP est **publique** (`FunctionUrlAuthType.NONE`)
-pour la phase de test. Avant toute mise en production :
+La connexion `email + mot de passe` fonctionne, mais un vrai projet ajoute :
+- le **SSO Google** (se connecter avec son compte Google) ;
+- le **MFA TOTP** optionnel (application d'authentification type Google
+  Authenticator, Authy, 1Password…).
+
+> **Pourquoi Google et pas GitHub ?** Google est un fournisseur **nativement
+> supporté** par Cognito. GitHub, lui, ne propose que de l'OAuth2 (pas
+> d'endpoint OIDC) : le brancher exigerait un **wrapper OIDC maison** (une
+> Lambda qui traduit l'OAuth GitHub en OIDC pour Cognito). C'est un chantier à
+> part, à étudier plus tard si besoin.
+
+### 1) Créer l'application OAuth côté Google
+1. [Google Cloud Console](https://console.cloud.google.com/) → créer un projet.
+2. « API et services » → « **Écran de consentement OAuth** » → type **Externe**
+   (mode *Testing* pour les tests) → renseigner l'adresse email.
+3. « Identifiants » → « Créer des identifiants » → **ID de client OAuth** →
+   *Application Web* → récupérer le **Client ID** et le **Secret client**.
+
+### 2) Stocker les secrets (jamais en clair dans le code)
+
+Depuis `backend-cli` ≥ 1.5, la commande `ampx secret set` a été déplacée sous
+le périmètre sandbox. Pour l'**environnement sandbox local** :
+```bash
+npx ampx sandbox secret set GOOGLE_CLIENT_ID --profile lhoarau
+npx ampx sandbox secret set GOOGLE_CLIENT_SECRET --profile lhoarau
+```
+(Il saisit la valeur puis la range dans SSM sous
+`/amplify/<namespace>/<name>-sandbox-<hash>/GOOGLE_CLIENT_ID`.)
+
+Pour la **branche git déployée par Amplify Hosting**, le paramètre SSM suit le
+« backend identifier » de la branche :
+`/amplify/<APP_ID>/<BRANCHE>-branch-<hash>/GOOGLE_CLIENT_ID` (le `hash` est
+calculé par Amplify ; le chemin exact s'obtient avec la lib
+`@aws-amplify/backend-secret`, `ParameterPathConversions.toParameterFullPath`).
+```bash
+aws ssm put-parameter --name /amplify/<APP_ID>/<BRANCHE>-branch-<hash>/GOOGLE_CLIENT_ID \
+  --value <CLIENT_ID> --type SecureString --region eu-central-1 --profile lhoarau
+aws ssm put-parameter --name /amplify/<APP_ID>/<BRANCHE>-branch-<hash>/GOOGLE_CLIENT_SECRET \
+  --value <CLIENT_SECRET> --type SecureString --region eu-central-1 --profile lhoarau
+```
+> `defineAuth` lit ces valeurs via `secret('GOOGLE_CLIENT_ID')`. Si le secret
+> n'existe pas au moment du déploiement, **le déploiement échoue**.
+
+### 3) Configurer le backend (`amplify/auth/resource.ts`)
+```ts
+import { defineAuth, secret } from '@aws-amplify/backend';
+
+export const auth = defineAuth({
+  loginWith: {
+    email: {},
+    externalProviders: {
+      google: {
+        clientId: secret('GOOGLE_CLIENT_ID'),
+        clientSecret: secret('GOOGLE_CLIENT_SECRET'),
+      },
+      callbackUrls: [
+        'http://localhost:3000/',
+        'https://<VOTRE_APP>.amplifyapp.com/',   // site déployé
+      ],
+      logoutUrls: [
+        'http://localhost:3000/',
+        'https://<VOTRE_APP>.amplifyapp.com/',
+      ],
+    },
+  },
+  multifactor: {
+    mode: 'OPTIONAL',   // OPTIONAL = chacun active ou non
+    totp: true,         // TOTP seul : pas de sender SMS/email à configurer
+  },
+});
+```
+
+### 4) ⚠️ Contournement Cognito : mise à jour du pool sans le recréer
+
+Cognito **fige les attributs d'un UserPool après création** (email requis,
+etc.). Or Amplify re-déclare le bloc `Schema` du pool à chaque déploiement :
+CloudFormation renvoie alors ce schéma à Cognito, qui le rejette avec
+`Invalid AttributeDataType input` — **même si le schéma n'a pas changé**. Sans
+correction, la seule issue proposée par Amplify est de **recréer le pool**
+(donc de perdre les utilisateurs).
+
+Pour mettre à jour un pool existant **en conservant ses utilisateurs**
+(MFA, SSO…), on retire `Schema` du template CFN dans `amplify/backend.ts`
+après `defineBackend` :
+```ts
+const cfnUserPool = backend.auth.resources.cfnResources.cfnUserPool;
+cfnUserPool.addPropertyDeletionOverride('Schema');
+```
+Le pool garde le schéma déjà en place ; les nouveaux attributs/ressources
+(MFA, Google IdP, domaine…) s'ajoutent sans toucher au schéma.
+
+### 5) Déployer, puis autoriser la redirection chez Google
+1. Déployer (sandbox, ou push pour Amplify Hosting) : Amplify crée alors le
+   **domaine Cognito**.
+2. Lire `amplify_outputs.json` → bloc `oauth.domain`, ex.
+   `https://<préfixe>.auth.eu-central-1.amazoncognito.com`.
+3. Dans Google Cloud Console (l'application OAuth du point 1), ajouter comme
+   **URI de redirection autorisée** :
+   ```
+   https://<préfixe>.auth.eu-central-1.amazoncognito.com/oauth2/idpresponse
+   ```
+   (C'est le seul paramètre à corriger en cas d'erreur `redirect_uri_mismatch`.)
+
+### 6) Frontend
+- `src/components/Login.js` : bouton « Continuer avec Google » →
+  `signInWithRedirect({ provider: 'Google' })`. Après un `signIn` classique, le
+  résultat expose `nextStep.signInStep` : si `CONFIRM_SIGN_IN_WITH_TOTP_CODE`,
+  on affiche le champ de code puis `confirmSignIn({ challengeResponse })`.
+- `src/components/Security.js` (onglet **Sécurité**) : le MFA se met en place
+  en 3 appels Amplify :
+  1. `setupTOTP()` → fournit une URI `otpauth://` affichée en **QR code**
+     (paquet `qrcode.react`) ;
+  2. `verifyTOTPSetup({ confirmationCode })` → valide le code de l'app ;
+  3. `updateMFAPreference({ totp: 'PREFERRED' })` → active réellement le TOTP.
+  L'état courant se lit avec `fetchMFAPreference()`.
+
+### 7) Vérifier
+1. « Continuer avec Google » → redirection vers Google → retour dans l'app.
+2. Onglet **Sécurité** → « Activer le TOTP » → scanner le QR dans une app
+   d'authentification → saisir un code → TOTP actif.
+3. Se déconnecter, se reconnecter : le code TOTP est demandé à la connexion.
+
+---
+
+## Étape 11 - Sécurisation restante (avant mise en production)
 
 1. **Protéger l'endpoint MCP** : passer le Function URL de `NONE` → `AWS_IAM`
    (les clients doivent être authentifiés) et restreindre les actions IAM.
-2. **SSO (Google / GitHub)** : compléter `loginWith` dans `auth/resource.ts`
-   avec `externalProviders` (OAuth des fournisseurs) + configuration des
-   redirections.
-3. **Règles de données** : `data/resource.ts` autorise ici tout le monde en
+2. **Règles de données** : `data/resource.ts` autorise ici tout le monde en
    `guest` → restreindre aux utilisateurs connectés (ex. `allow.authenticated()`).
 
 ---
@@ -351,6 +473,39 @@ redéploie avec `npx amplify sandbox --once …`.
 
 **L'app ne trouve pas `amplify_outputs.json`**
 Relance la commande de l'Étape 6 (le fichier est ignoré par git).
+
+**Google : erreur `redirect_uri_mismatch` au SSO**
+L'URI de redirection autorisée chez Google doit être **exactement**
+`https://<domaine>.auth.<région>.amazoncognito.com/oauth2/idpresponse`
+(Étape 10.4). Si le domaine change après un redéploiement, mets à jour le
+champ chez Google.
+
+**Le déploiement du backend échoue : « secret not found »**
+Les secrets `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` doivent exister dans
+SSM **avant** le déploiement (Étape 10.2). Pour la branche Amplify Hosting, le
+chemin est `/amplify/<APP_ID>/<BRANCHE>-branch-<hash>/…`.
+
+**Échec de déploiement : `Invalid AttributeDataType input`**
+Cognito refuse tout retour du bloc `Schema` dans une mise à jour du pool.
+Vérifie que le contournement de l'Étape 10.4 est bien présent dans
+`amplify/backend.ts` (`addPropertyDeletionOverride('Schema')`), puis redéploie.
+
+**`ampltificate_outputs` : « Deployment is currently in progress » bloqué**
+Après un déploiement sandbox interrompu (process coupé), le stack peut rester
+en `UPDATE_COMPLETE_CLEANUP_IN_PROGRESS` : CloudFormation ne peut ni produire
+les outputs ni supprimer le stack. Il faut déclencher un **nouveau déploiement**
+avec un changement réel et laisser le processus CLI vivre jusqu'au bout ; le
+nettoyage reprend alors et les outputs se génèrent.
+
+**Rafraîchir `src/amplify_outputs.json` après un déploiement**
+```bash
+# pour un stack sandbox :
+npx ampx generate outputs --stack <NOM_DU_STACK> --profile lhoarau \
+  --format json --outputs-version 1.5 --out-dir ./src
+# pour la branche déployée par Amplify Hosting :
+npx ampx generate outputs --app-id <APP_ID> --branch <BRANCHE> --profile lhoarau \
+  --format json --outputs-version 1.5 --out-dir ./src
+```
 
 ---
 

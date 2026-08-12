@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('affiche l\'interface du serveur MCP', () => {
+test('affiche l\'interface du serveur MCP', async () => {
   render(<App />);
-  expect(screen.getByText(/serveur mcp/i)).toBeInTheDocument();
+  expect(await screen.findByText(/serveur mcp/i)).toBeInTheDocument();
 });
