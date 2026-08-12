@@ -18,8 +18,8 @@ function buildServer() {
   server.registerTool(
     "ping",
     {
-      title: "Ping",
-      description: "Renvoie pong pour vérifier que le serveur répond",
+      title: "ping",
+      description: "Renvoie pong, accompagné du message, pour vérifier que le serveur répond",
       inputSchema: { message: z.string().optional() },
     },
     async ({ message }) => ({
@@ -30,7 +30,7 @@ function buildServer() {
   server.registerTool(
     "get-servers-registry",
     {
-      title: "Registre des serveurs MCP",
+      title: "get-servers-registry",
       description: "Renvoie la liste des serveurs MCP disponibles et de leurs outils",
       inputSchema: {},
     },
@@ -43,7 +43,7 @@ function buildServer() {
     "servers-registry",
     "registry://servers", // URI arbitraire : sert d'identifiant unique pour cette ressource
     {
-      title: "Registre des serveurs MCP",
+      title: "servers-registry",
       description: "Liste des serveurs MCP disponibles et de leurs outils",
       mimeType: "application/json",
     },

@@ -1,4 +1,4 @@
-# GUIDE — Serveur MCP avec Amplify (Gen 2) + Interface React
+# GUIDE - Serveur MCP avec Amplify (Gen 2) + Interface React
 
 Guide pas-à-pas destiné à un stagiaire. Chaque section est **indépendante** et
 reprend une étape réelle du projet : on copie, on lance les commandes, on
@@ -40,7 +40,7 @@ app-mcp-server/
 
 ---
 
-## Étape 0 — Prérequis
+## Étape 0 - Prérequis
 
 | Outil | Rôle | Vérifier |
 |-------|------|----------|
@@ -76,7 +76,7 @@ region=eu-central-1
 
 ---
 
-## Étape 1 — Créer le projet React
+## Étape 1 - Créer le projet React
 
 ```
 npx create-react-app app-mcp-server
@@ -87,7 +87,7 @@ cd app-mcp-server
 
 ---
 
-## Étape 2 — Récupérer le code MCP (source)
+## Étape 2 - Récupérer le code MCP (source)
 
 Le serveur MCP est un petit serveur HTTP qui implémente le protocole **Model
 Context Protocol** (JSON-RPC sur `POST /mcp`). On copie sa **source** TypeScript
@@ -109,9 +109,9 @@ Ajoute aussi le `tsconfig.json` (compilation → dossier `build`) et le
 
 ---
 
-## Étape 3 — Créer le backend Amplify (définition en code)
+## Étape 3 - Créer le backend Amplify (définition en code)
 
-### `amplify/auth/resource.ts` — connexion Cognito
+### `amplify/auth/resource.ts` - connexion Cognito
 ```ts
 import { defineAuth } from '@aws-amplify/backend';
 
@@ -125,7 +125,7 @@ export const auth = defineAuth({
 > sert d'identifiant. Le **SSO (Google / GitHub)** s'ajoutera plus tard via
 > `externalProviders` (voir Étape 10).
 
-### `amplify/data/resource.ts` — base de données
+### `amplify/data/resource.ts` - base de données
 ```ts
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 
@@ -142,7 +142,7 @@ export const data = defineData({
 });
 ```
 
-### `amplify/backend.ts` — assemble tout + expose l'URL du MCP
+### `amplify/backend.ts` - assemble tout + expose l'URL du MCP
 ```ts
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
@@ -172,7 +172,7 @@ Reprend la configuration du prototype :
 
 ---
 
-## Étape 4 — Ajouter les dépendances du projet
+## Étape 4 - Ajouter les dépendances du projet
 
 Dans le `package.json` **racine** :
 
@@ -199,7 +199,7 @@ npm install
 
 ---
 
-## Étape 5 — Compiler le serveur MCP
+## Étape 5 - Compiler le serveur MCP
 
 ```
 cd amplify/functions/mcp-server
@@ -212,7 +212,7 @@ cd ../..
 
 ---
 
-## Étape 6 — Déployer le backend (dev) et générer les outputs
+## Étape 6 - Déployer le backend (dev) et générer les outputs
 
 Le CLI Gen 2 crée un environnement **sandbox** et génère `amplify_outputs.json` :
 
@@ -235,7 +235,7 @@ Au premier déploiement, c'est aussi ici qu'apparaît le message
 
 ---
 
-## Étape 7 — Mettre à jour l'URL du serveur dans le registre
+## Étape 7 - Mettre à jour l'URL du serveur dans le registre
 
 Ouvre `amplify_outputs.json` et lis :
 
@@ -264,7 +264,7 @@ npx amplify sandbox --once --profile lhoarau --outputs-format json --outputs-out
 
 ---
 
-## Étape 8 — L'interface React
+## Étape 8 - L'interface React
 
 ### Configurer Amplify au démarrage
 `src/awsConfig.js` :
@@ -292,7 +292,7 @@ demandée (`tools/list`, `resources/read`, `tools/call`…), et décode la répo
 
 ---
 
-## Étape 9 — Lancer et vérifier
+## Étape 9 - Lancer et vérifier
 
 ```
 npm start
@@ -314,7 +314,7 @@ curl -X POST "https://<URL_LAMBDA>/mcp" \
 
 ---
 
-## Étape 10 — Sécurisation (à faire avant la mise en production)
+## Étape 10 - Sécurisation (à faire avant la mise en production)
 
 À ce stade, l'URL de la Lambda MCP est **publique** (`FunctionUrlAuthType.NONE`)
 pour la phase de test. Avant toute mise en production :

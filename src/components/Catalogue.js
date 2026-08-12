@@ -55,7 +55,7 @@ export default function Catalogue() {
         <ul className="list">
           {servers.map((s) => (
             <li key={s.id}>
-              <strong>{s.id}</strong> — <span className="muted">{s.description}</span>
+              <strong>{s.id}</strong> - <span className="muted">{s.description}</span>
               <div className="muted">URL : <code>{s.url}</code></div>
               {s.tools?.length > 0 && (
                 <div className="muted">Outils : {s.tools.join(', ')}</div>
@@ -71,7 +71,7 @@ export default function Catalogue() {
         <ul className="list">
           {tools.map((t) => (
             <li key={t.name}>
-              <strong>{t.name}</strong> — <span className="muted">{t.description}</span>
+              <strong>{t.name}</strong> - <span className="muted">{t.description}</span>
             </li>
           ))}
         </ul>
