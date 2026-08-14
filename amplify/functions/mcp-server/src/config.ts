@@ -5,7 +5,7 @@
 // d'environnement Lambda créerait une dépendance circulaire Lambda -> FunctionUrl.
 export const MCP_SERVER_URL =
   process.env.MCP_SERVER_URL ??
-  "https://gyxriftctnqoh6cotxncoxsrfy0wiqtm.lambda-url.eu-central-1.on.aws/mcp";
+  "https://wis2odctw35fd5rtqdtajeykea0uejjf.lambda-url.eu-central-1.on.aws/mcp";
 
 export const MCP_ORIGIN = new URL(MCP_SERVER_URL).origin;
 

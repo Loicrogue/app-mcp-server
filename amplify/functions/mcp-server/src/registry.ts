@@ -8,7 +8,7 @@ export interface McpServerEntry {
 
 // ⚠️ CORE_BASE_URL : URL de base du serveur MCP déployé.
 // Copier la valeur de `custom.mcpServerUrl` (amplify_outputs.json), sans le "/mcp".
-const CORE_BASE_URL = "https://gyxriftctnqoh6cotxncoxsrfy0wiqtm.lambda-url.eu-central-1.on.aws";
+const CORE_BASE_URL = "https://wis2odctw35fd5rtqdtajeykea0uejjf.lambda-url.eu-central-1.on.aws";
 
 export const registry: { servers: McpServerEntry[] } = {
   servers: [

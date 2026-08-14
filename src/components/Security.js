@@ -16,14 +16,19 @@ export default function Security({ username }) {
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(''); // échec de lecture de l'état MFA
 
   async function loadMfa() {
     setLoading(true);
+    setLoadError('');
     try {
       const pref = await fetchMFAPreference();
       setMfa(pref);
     } catch (err) {
-      setError(err.message ?? String(err));
+      // Un échec ne doit JAMAIS laisser croire que le TOTP est inactif :
+      // l'état reste inconnu, on l'affiche et on propose de réessayer.
+      setMfa(null);
+      setLoadError(err.message ?? String(err));
     } finally {
       setLoading(false);
     }
@@ -73,6 +78,26 @@ export default function Security({ username }) {
 
   if (loading) return <p>Chargement des paramètres de sécurité…</p>;
 
+  // État MFA illisible : on n'affiche PAS le bouton d'activation, sinon
+  // l'utilisateur croirait que le TOTP est inactif alors qu'il l'est peut-être.
+  if (loadError) {
+    return (
+      <div>
+        <h2>Sécurité</h2>
+        <section>
+          <h3>Authentification à deux facteurs (TOTP)</h3>
+          <p className="error">Impossible de lire l'état MFA : {loadError}</p>
+          <button onClick={loadMfa}>Réessayer</button>
+          <p className="muted">
+            Astuce : si le compte a été créé via le SSO Google (sans mot de
+            passe Cognito), le TOTP Cognito peut être indisponible ; vérifie
+            l'état dans la console AWS (Cognito → utilisateur → MFA).
+          </p>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2>Sécurité</h2>
@@ -84,6 +109,7 @@ export default function Security({ username }) {
           1Password, Authy…) pour protéger la connexion. Le code à 6 chiffres
           sera demandé à chaque connexion.
         </p>
+        <p className="muted">État renvoyé par Cognito : {JSON.stringify(mfa)}</p>
 
         {setupUri ? (
           <div className="totp-setup">

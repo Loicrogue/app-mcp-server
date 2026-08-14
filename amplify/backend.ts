@@ -77,10 +77,20 @@ mcpLambda.addEnvironment('AWS_LWA_READINESS_CHECK_TIMEOUT', '30000');
 // membre de AllowMethods à 6 caractères — "OPTIONS" (7) fait échouer la
 // validation ("Member must have length less than or equal to 6") ; on
 // utilise donc le joker "*" pour autoriser toutes les méthodes.
+//
+// allowedOrigins : uniquement les origines réelles (app Amplify, localhost
+// pour le dev, claude.ai/claude.com pour la découverte OAuth côté client).
+// Les échanges serveur-à-serveur (token endpoint, métadonnées, POST /mcp du
+// connecteur Claude) ne portent pas d'en-tête Origin : non concernés par CORS.
 const mcpFunctionUrl = mcpLambda.addFunctionUrl({
   authType: FunctionUrlAuthType.NONE,
   cors: {
-    allowedOrigins: ['*'],
+    allowedOrigins: [
+      'http://localhost:3000',
+      'https://main.dw5aonh4td8cy.amplifyapp.com',
+      'https://claude.ai',
+      'https://claude.com',
+    ],
     allowedMethods: ['*'] as HttpMethod[],
     allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   },

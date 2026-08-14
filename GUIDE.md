@@ -526,6 +526,109 @@ Points d'attention :
 
 ---
 
+## Étape 13 - Correctifs finaux, validation du connecteur Claude et état de sécurité
+
+Dernière passe : les correctifs restants, la configuration **validée** du
+connecteur Claude et les limites connues.
+
+### 1) Correctifs appliqués (commits de clôture)
+
+- **`2ba9a2a` — CORS Function URL `AllowMethods '*'`** : l'API Lambda limite
+  chaque membre de `AllowMethods` à 6 caractères ; `"OPTIONS"` (7 caractères)
+  fait échouer la validation (`Member must have length less than or equal to
+  6`). Le joker `"*"` est la seule valeur acceptée pour couvrir OPTIONS.
+- **`5e8fba7` — tokens front sans `aud` + readiness LWA** :
+  - les access tokens du front (client Amplify) ne portent **pas** de claim
+    `aud`, seulement `client_id` → `auth.ts` accepte désormais `client_id`
+    dans les audiences autorisées (en plus de `aud` du flux RFC 8707) ;
+  - `AWS_LWA_READINESS_CHECK_PATH` (`/health`) : évite le 502 « connection
+    refused » au premier appel d'une instance Lambda froide ;
+  - `src/mcp.js` : un retry unique en cas de 502.
+- **`c91aa21` — CORS non dupliqué** : le Function URL ajoute déjà les
+  en-têtes CORS ; Express n'en émet plus dans la Lambda (sinon deux valeurs
+  d'`Access-Control-Allow-Origin` → `Failed to fetch` côté navigateur).
+- **`allowedOrigins` restreint** (`amplify/backend.ts`) : plus de `'*'`,
+  uniquement `http://localhost:3000`, l'app Amplify
+  (`https://main.dw5aonh4td8cy.amplifyapp.com/`) et `claude.ai`/`claude.com`
+  (découverte OAuth côté client). Les échanges serveur-à-serveur (métadonnées,
+  `/token`, `POST /mcp` du connecteur) ne portent pas d'en-tête `Origin` :
+  non concernés par CORS.
+
+### 2) ⚠️ Recréation du stack sandbox (lire avant de redéployer)
+
+Mettre à jour les dépendances Amplify (`npm install`, lockfile régénéré)
+change les **identifiants logiques CloudFormation** des ressources auth
+(hash internes des constructs). Au prochain `npx amplify sandbox --once`,
+CloudFormation **recrée** alors le UserPool, le domaine Cognito, les clients
+et le Function URL : les comptes utilisateurs du pool précédent sont perdus
+et l'URL du serveur change.
+
+Après une telle recréation, penser à :
+
+1. mettre à jour **l'URL en dur** dans `config.ts` et `registry.ts`
+   (règle Étape 7) ;
+2. `npm run build --prefix amplify/functions/mcp-server` puis redéployer ;
+3. mettre à jour l'**URI de redirection chez Google** (nouveau domaine
+   Cognito, voir Étape 10.5) : `redirect_uri_mismatch` sinon ;
+4. mettre à jour les **valeurs du connecteur Claude** (Tableau ci-dessous) ;
+5. supprimer l'**ancien stack orphelin** (CloudFormation → Delete) pour ne
+   pas laisser tourner des ressources inutilisées (coût + surface d'attaque).
+
+### 3) Configuration validée du connecteur Claude
+
+Valeurs **testées en ligne** (connecteur « Custom / OAuth 2.1 ») :
+
+| Paramètre | Valeur |
+|-----------|--------|
+| Server URL | `https://wis2odctw35fd5rtqdtajeykea0uejjf.lambda-url.eu-central-1.on.aws/mcp` |
+| Authorization Server URL | `https://wis2odctw35fd5rtqdtajeykea0uejjf.lambda-url.eu-central-1.on.aws/.well-known/oauth-authorization-server` |
+| Client ID | `7p2vh7esgqe8h02mn811sociad` (= `custom.claudeClientId`) |
+| Client Secret | *(vide)* — client **public** |
+| Scopes | `openid email profile` |
+
+Le client est **public avec PKCE S256, sans secret** : conforme RFC 8252
+pour un client web public ; le serveur annonce
+`token_endpoint_auth_methods_supported: ["client_secret_post", "none"]`.
+
+### 4) Limites connues
+
+- **Claude Code / Desktop non supportés** : Cognito exige des callback URLs
+  exactes (`claude.ai` / `claude.com`), pas de loopback local ;
+- **SSO Google** : ne marche qu'avec le domaine Cognito enregistré chez
+  Google (sinon `redirect_uri_mismatch`) — utiliser le compte email/mot de
+  passe jusqu'à la mise à jour ;
+- **Prototype retiré de l'internet** : le Function URL du prototype
+  (`3pg6f3m4zaagplz5zbq4avh35y0zhdph…`) a été supprimé (endpoint resté
+  ouvert sans Bearer). Le code prototype reste exploitable en local.
+
+### 5) Sécurité restante avant mise en production
+
+- `amplify/data/resource.ts` autorise encore tout en `guest` →
+  `allow.authenticated()` ;
+- (optionnel) scripts de test dans `test/`, logging CloudWatch structuré,
+  anti-abuse (rate limiting). Cache d'authentification déjà correct
+  (`secret()` jamais en clair dans le dépôt).
+
+### 6) Vérification finale
+
+```bash
+# 401 sans token (Bearer exigé)
+curl -i -X POST https://<URL_LAMBDA>/mcp -H "Content-Type: application/json"
+# métadonnées OAuth (issuer = URL réelle du serveur)
+curl https://<URL_LAMBDA>/.well-known/oauth-authorization-server
+# CORS : l'origin de l'app est autorisée…
+curl -i -X OPTIONS https://<URL_LAMBDA>/mcp -H "Origin: https://main.dw5aonh4td8cy.amplifyapp.com" \
+  -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type,accept,authorization"
+# …et une origine inconnue est refusée (pas d'Access-Control-Allow-Origin)
+curl -i -X OPTIONS https://<URL_LAMBDA>/mcp -H "Origin: https://evil.example.com" \
+  -H "Access-Control-Request-Method: POST"
+```
+
+> Test final conseillé : relancer le refresh token avec une session Claude
+> réelle (déconnexion/reconnexion du connecteur).
+
+---
+
 ## Dépannage
 
 **Message « Adding backend environment dev to AWS Amplify app »**
