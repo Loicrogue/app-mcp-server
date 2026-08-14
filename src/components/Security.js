@@ -51,7 +51,7 @@ export default function Security({ username }) {
     e.preventDefault();
     setError('');
     try {
-      await verifyTOTPSetup({ confirmationCode: code });
+      await verifyTOTPSetup({ code });
       await updateMFAPreference({ totp: 'PREFERRED' });
       setSetupUri(null);
       setCode('');

@@ -60,7 +60,7 @@ function App() {
     <div className="app">
       <header className="topbar">
         <span className="brand">Serveur MCP</span>
-        <span className="muted">Connecté : {user.username}</span>
+        <span className="muted">Connecté : {user.signInDetails ? user.signInDetails.loginId: user.username}</span>
         <nav>
           <button
             className={tab === 'catalogue' ? 'active' : ''}

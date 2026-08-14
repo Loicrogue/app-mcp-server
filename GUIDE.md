@@ -433,7 +433,7 @@ Le pool garde le schéma déjà en place ; les nouveaux attributs/ressources
   en 3 appels Amplify :
   1. `setupTOTP()` → fournit une URI `otpauth://` affichée en **QR code**
      (paquet `qrcode.react`) ;
-  2. `verifyTOTPSetup({ confirmationCode })` → valide le code de l'app ;
+  2. `verifyTOTPSetup({ code })` → valide le code de l'app ;
   3. `updateMFAPreference({ totp: 'PREFERRED' })` → active réellement le TOTP.
   L'état courant se lit avec `fetchMFAPreference()`.
 
