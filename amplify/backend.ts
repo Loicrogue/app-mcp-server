@@ -65,12 +65,15 @@ mcpLambda.addEnvironment('CLAUDE_CLIENT_ID', claudeClient.userPoolClientId);
 // CORS : Amplify configure par défaut le gateway avec les seuls en-têtes
 // Content-Type/Accept — le navigateur rejetterait le preflight d'une requête
 // portant un Authorization header ("Failed to fetch"). Authorization est
-// donc ajouté aux en-têtes autorisés.
+// donc ajouté aux en-têtes autorisés. Attention : l'API Lambda limite chaque
+// membre de AllowMethods à 6 caractères — "OPTIONS" (7) fait échouer la
+// validation ("Member must have length less than or equal to 6") ; on
+// utilise donc le joker "*" pour autoriser toutes les méthodes.
 const mcpFunctionUrl = mcpLambda.addFunctionUrl({
   authType: FunctionUrlAuthType.NONE,
   cors: {
     allowedOrigins: ['*'],
-    allowedMethods: [HttpMethod.POST, HttpMethod.OPTIONS],
+    allowedMethods: ['*'] as HttpMethod[],
     allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
   },
 });
