@@ -57,6 +57,14 @@ mcpLambda.addEnvironment(
 );
 mcpLambda.addEnvironment('CLAUDE_CLIENT_ID', claudeClient.userPoolClientId);
 
+// Readiness probe du Lambda Web Adapter : sans lui, la première requête
+// d'une instance froide arrive avant que l'application écoute sur son port
+// et reçoit un 502 "connection refused" du Function URL (voir /health dans
+// amplify/functions/mcp-server/src/index.ts).
+mcpLambda.addEnvironment('AWS_LWA_READINESS_CHECK_PATH', '/health');
+mcpLambda.addEnvironment('AWS_LWA_READINESS_CHECK_DELAY', '500');
+mcpLambda.addEnvironment('AWS_LWA_READINESS_CHECK_TIMEOUT', '30000');
+
 // ⚠️ NONE = accès public sans authentification au niveau du Function URL :
 // la validation d'accès se fait dans la Lambda (Bearer token Cognito), ce
 // qui permet au connecteur Claude de passer par le flux OAuth décrit dans

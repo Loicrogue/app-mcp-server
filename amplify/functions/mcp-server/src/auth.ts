@@ -40,11 +40,20 @@ export async function verifyAccessToken(token: string) {
     );
   }
 
+  // Les access tokens Cognito ne portent PAS de claim `aud` quand ils sont
+  // émis pour un client (seulement `client_id`). Le claim `aud` n'apparaît
+  // que si un paramètre RFC 8707 `resource` a été envoyé au moment de
+  // l'échange (cas du flux Claude). On accepte donc indifféremment `aud`
+  // (flux Claude) et `client_id` (tokens du front Amplify et du client
+  // Claude sans `resource`).
   const audiences: string[] = Array.isArray(payload.aud)
     ? payload.aud
     : payload.aud
       ? [payload.aud]
       : [];
+  if (typeof payload.client_id === "string") {
+    audiences.push(payload.client_id);
+  }
   const allowed = audiences.some(
     (a: string) =>
       a === WEB_CLIENT_ID || a === CLAUDE_CLIENT_ID || isMcpUrlAudience(a)

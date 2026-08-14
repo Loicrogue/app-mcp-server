@@ -20,7 +20,7 @@ async function postJsonRpc(method, params) {
   }
 
   const body = { jsonrpc: '2.0', id: 1, method, params };
-  const res = await fetch(MCP_SERVER_URL, {
+  let res = await fetch(MCP_SERVER_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -29,6 +29,20 @@ async function postJsonRpc(method, params) {
     },
     body: JSON.stringify(body),
   });
+
+  // Un 502 peut arriver sur une instance Lambda froide (le serveur HTTP
+  // interne n'écoute pas encore) : un seul retry suffit.
+  if (res.status === 502) {
+    res = await fetch(MCP_SERVER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  }
 
   if (!res.ok) {
     const message =

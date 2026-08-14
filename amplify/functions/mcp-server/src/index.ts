@@ -92,6 +92,14 @@ app.get("/.well-known/oauth-protected-resource", (_req, res) => {
   });
 });
 
+// Health check utilisé par le readiness probe du Lambda Web Adapter
+// (AWS_LWA_READINESS_CHECK_PATH) : sans lui, la première requête d'une
+// instance froide arrive avant que le serveur écoute sur son port et
+// reçoit un 502 "connection refused" du Function URL.
+app.get("/health", (_req, res) => {
+  res.sendStatus(200);
+});
+
 // Routeur OAuth : /.well-known/oauth-authorization-server,
 // /.well-known/oauth-protected-resource/mcp, /authorize et /token.
 // Le discovery Cognito est résolu avant la première requête (promesse unique).

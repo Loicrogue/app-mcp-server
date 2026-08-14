@@ -131,6 +131,7 @@
   },
   "version": "1.5",
   "custom": {
-    "mcpServerUrl": "https://gyxriftctnqoh6cotxncoxsrfy0wiqtm.lambda-url.eu-central-1.on.aws/"
+    "mcpServerUrl": "https://gyxriftctnqoh6cotxncoxsrfy0wiqtm.lambda-url.eu-central-1.on.aws/",
+    "claudeClientId": "74c6j0407br891fii5pvc4k29b"
   }
 }
