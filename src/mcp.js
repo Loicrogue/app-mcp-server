@@ -1,22 +1,41 @@
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { MCP_SERVER_URL } from './awsConfig';
 
 // Client JSON-RPC minimal pour le serveur MCP (mode stateless, transport HTTP).
 // Chaque opération envoie d'abord `initialize` puis la méthode demandée,
 // car le serveur n'est pas initialisé entre deux requêtes HTTP.
+//
+// Authentification : le serveur exige un Bearer token Cognito (access token
+// de la session Amplify active). Un 401 signifie que la session est absente
+// ou expirée : le serveur MCP n'est alors pas accessible.
 
 async function postJsonRpc(method, params) {
+  let token;
+  try {
+    ({ tokens: { accessToken: token } } = await fetchAuthSession());
+  } catch (err) {
+    throw new Error(
+      `Session Amplify absente : ${err.message ?? 'utilisateur non connecté'}`
+    );
+  }
+
   const body = { jsonrpc: '2.0', id: 1, method, params };
   const res = await fetch(MCP_SERVER_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json, text/event-stream',
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),
   });
 
   if (!res.ok) {
-    throw new Error(`Erreur HTTP ${res.status} : ${res.statusText}`);
+    const message =
+      res.status === 401
+        ? 'Non autorisé : connexion expirée, reconnectez-vous'
+        : `Erreur HTTP ${res.status} : ${res.statusText}`;
+    throw new Error(message);
   }
 
   const text = await res.text();

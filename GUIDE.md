@@ -447,10 +447,82 @@ Le pool garde le schéma déjà en place ; les nouveaux attributs/ressources
 
 ## Étape 11 - Sécurisation restante (avant mise en production)
 
-1. **Protéger l'endpoint MCP** : passer le Function URL de `NONE` → `AWS_IAM`
-   (les clients doivent être authentifiés) et restreindre les actions IAM.
+1. ~~**Protéger l'endpoint MCP**~~ → fait, voir **Étape 12** (OAuth 2.1 + Bearer
+   Cognito).
 2. **Règles de données** : `data/resource.ts` autorise ici tout le monde en
    `guest` → restreindre aux utilisateurs connectés (ex. `allow.authenticated()`).
+
+---
+
+## Étape 12 - Sécuriser l'endpoint MCP (OAuth 2.1 + Bearer Cognito)
+
+L'endpoint `/mcp` exige désormais un **Bearer token Cognito**. Deux usages :
+
+- **Front React** : `src/mcp.js` joint chaque requête d'un access token de la
+  session Amplify (`fetchAuthSession()`).
+- **Connecteur Claude** : flux OAuth 2.1 complet (authorization code + PKCE)
+  contre le serveur MCP lui-même, qui sert d'*authorization server* et
+  **délègue la connexion à Cognito** (hosted UI) : c'est un proxy pass-through,
+  la Lambda ne stocke aucun état.
+
+### 1) Fichiers du serveur MCP (`amplify/functions/mcp-server/src/`)
+
+- `config.ts` : URL canonique du serveur (RFC 8707), issuer Cognito, audiences
+  acceptées, callbacks Claude ;
+- `auth.ts` : `verifyAccessToken()` — vérifie signature (JWKS du pool),
+  issuer et audience (`WEB_CLIENT_ID`, `CLAUDE_CLIENT_ID`, ou URL
+  `*.lambda-url.<région>.on.aws` pour le paramètre RFC 8707 `resource`) ;
+- `oauth.ts` : découverte Cognito mémorisée, client `claude-mcp`
+  (public/PKCE), `CognitoProxyProvider` (échange de code et refresh
+  pass-through, erreurs amont traduites en `invalid_grant`…) ;
+- `index.ts` : CORS + `/.well-known/oauth-protected-resource` (RFC 9728),
+  routeur OAuth du SDK (RFC 8414, `/authorize`, `/token`),
+  `requireBearerAuth` sur `POST /mcp`.
+
+### 2) Backend (`amplify/backend.ts`)
+
+- Client Cognito **public** dédié : `backend.auth.resources.userPool.addClient
+  ('claude-mcp', …)` avec callbacks `https://claude.ai/api/mcp/auth_callback`
+  et `https://claude.com/api/mcp/auth_callback` ;
+- Variables d'environnement Lambda : `COGNITO_REGION`, `COGNITO_POOL_ID`,
+  `WEB_CLIENT_ID`, `CLAUDE_CLIENT_ID` ;
+- **CORS** sur le Function URL : Authority (`Authorization`) doit figurer dans
+  `allowedHeaders` — sinon le navigateur rejette le preflight
+  (« Failed to fetch ») ;
+- Outputs `custom.mcpServerUrl` et `custom.claudeClientId`.
+
+### 3) Configurer le connecteur Claude
+
+1. Connecteur « Custom / OAuth 2.1 » :
+   - **Authorization Server URL** :
+     `https://<URL_LAMBDA>/.well-known/oauth-authorization-server`
+   - **Client ID** : `custom.claudeClientId` (amplify_outputs.json) ;
+   - **Scopes** : `openid email profile`.
+2. Le login se fait sur la hosted UI Cognito (mot de passe ou Google).
+
+### 4) Vérifier
+
+```bash
+# métadonnées OAuth
+curl https://<URL_LAMBDA>/.well-known/oauth-authorization-server
+curl https://<URL_LAMBDA>/.well-known/oauth-protected-resource/mcp
+# sans token -> 401
+curl -i -X POST https://<URL_LAMBDA>/mcp
+# flux complet : /authorize (PKCE S256) -> code -> /token -> Bearer /mcp
+```
+
+Points d'attention :
+
+- **`WWW-Authenticate` est remappé** par le Function URL en
+  `x-amzn-Remapped-www-authenticate` (limite AWS) : Claude ne peut pas
+  découvrir l'AS automatiquement, d'où la configuration **manuelle** du point
+  3 ;
+- **Claude Code (bureau) n'est pas supporté** : Cognito exige des callback
+  URLs exactes, pas de loopback local ;
+- le login **Google ne marche qu'avec le domaine Cognito enregistré chez
+  Google** — un sandbox avec un domaine différent échoue en
+  `redirect_uri_mismatch` (utiliser le compte email/mot de passe, ou tester
+  sur la branche prod).
 
 ---
 
