@@ -11,7 +11,7 @@ import {
 // Flux : setupTOTP() fournit le secret partagé (QR) -> verifyTOTPSetup(code)
 // -> updateMFAPreference({ totp: 'PREFERRED' }) pour activer le TOTP.
 export default function Security({ username }) {
-  const [mfa, setMfa] = useState(null); // null | { totp: 'ENABLED'|'PREFERRED'|'DISABLED'|'NOT_SET', ... }
+  const [mfa, setMfa] = useState(null); // null | { preferred?: 'TOTP'|'SMS', enabled: ('TOTP'|'SMS')[] }
   const [setupUri, setSetupUri] = useState(null); // URI otpauth:// (QR + texte)
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -38,7 +38,9 @@ export default function Security({ username }) {
     loadMfa();
   }, []);
 
-  const totpEnabled = mfa?.totp === 'ENABLED' || mfa?.totp === 'PREFERRED';
+  const totpEnabled = mfa?.enabled?.includes('TOTP') ?? false;
+  const totpPreferred = mfa?.preferred === 'TOTP';
+  const isGoogleAccount = username?.startsWith('google_');
 
   async function handleStartSetup() {
     setError('');
@@ -144,12 +146,26 @@ export default function Security({ username }) {
         ) : totpEnabled ? (
           <div>
             <p className="muted">
-              TOTP actif ({mfa.totp === 'PREFERRED' ? 'préféré' : 'activé'}).
+              TOTP actif ({totpPreferred ? 'préféré' : 'activé'}).
             </p>
             <button onClick={handleDisable}>Désactiver le TOTP</button>
           </div>
         ) : (
-          <button onClick={handleStartSetup}>Activer le TOTP</button>
+          <div>
+            {isGoogleAccount && (
+              <p className="muted">
+                Le TOTP Cognito n'est pas disponible pour les comptes
+                connectés via Google : l'authentification est gérée par
+                Google.
+              </p>
+            )}
+            <button
+              onClick={handleStartSetup}
+              disabled={isGoogleAccount}
+            >
+              Activer le TOTP
+            </button>
+          </div>
         )}
 
         {error && <p className="error">Erreur : {error}</p>}
