@@ -597,9 +597,11 @@ pour un client web public ; le serveur annonce
 - **SSO Google** : ne marche qu'avec le domaine Cognito enregistré chez
   Google (sinon `redirect_uri_mismatch`) — utiliser le compte email/mot de
   passe jusqu'à la mise à jour ;
-- **Prototype retiré de l'internet** : le Function URL du prototype
-  (`3pg6f3m4zaagplz5zbq4avh35y0zhdph…`) a été supprimé (endpoint resté
-  ouvert sans Bearer). Le code prototype reste exploitable en local.
+- **Prototype retiré de l'internet** : le stack CloudFormation du prototype
+  (`amplify-prototype-loich-sandbox-4abdd429b5`) a été entièrement supprimé
+  (Lambdas, buckets, UserPool, Function URL `3pg6f3m4zaagplz5zbq4avh35y0zhdph…`
+  qui était restée ouverte sans Bearer). Le code prototype reste exploitable
+  en local.
 
 ### 5) Sécurité restante avant mise en production
 
