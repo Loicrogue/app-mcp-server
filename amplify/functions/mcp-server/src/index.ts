@@ -64,19 +64,23 @@ function buildServer() {
 const app = express();
 app.use(express.json());
 
-// CORS : autorise les requêtes cross-origin depuis localhost (React dev) et
-// tout autre origin. Les pré-requêtes OPTIONS sont traitées ici directement
-// par Express, et en complément au niveau du Function URL (backend.ts).
-// GET sert les métadonnées OAuth et la redirection /authorize.
+// CORS : dans la Lambda, le Function URL (config dans backend.ts) ajoute déjà
+// les en-têtes CORS et interrompt les pré-requêtes OPTIONS. Si Express les
+// ajoutait aussi, la réponse porterait deux valeurs d'Access-Control-Allow-Origin
+// (ex. "*, https://...") que le navigateur rejette ("Failed to fetch").
+// En local (hors Lambda), Express fournit les en-têtes et le court-circuit
+// OPTIONS.
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Accept, Authorization"
-  );
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
+  if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Accept, Authorization"
+    );
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
   }
   next();
 });
