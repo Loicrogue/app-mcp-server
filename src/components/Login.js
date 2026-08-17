@@ -12,12 +12,41 @@ import {
 // À l'inscription, un code de vérification est envoyé par email.
 // Si l'utilisateur a activé le TOTP (onglet Sécurité), le login bascule
 // sur la saisie du code à 6 chiffres (CONFIRM_SIGN_IN_WITH_TOTP_CODE).
+
+function formatAuthError(err) {
+  const message = err?.message ?? String(err);
+  if (message.includes('NotAuthorizedException')) {
+    return 'Email ou mot de passe incorrect.';
+  }
+  if (message.includes('UserNotFoundException')) {
+    return 'Aucun compte trouvé avec cet email.';
+  }
+  if (message.includes('PasswordResetRequiredException')) {
+    return 'Vous devez réinitialiser votre mot de passe.';
+  }
+  if (message.includes('TooManyRequestsException')) {
+    return 'Trop de tentatives. Réessayez dans quelques minutes.';
+  }
+  if (message.includes('UserNotConfirmedException')) {
+    return "Votre compte n'a pas été confirmé. Vérifiez votre email.";
+  }
+  if (message.includes('CodeMismatchException')) {
+    return 'Code de vérification incorrect.';
+  }
+  if (message.includes('ExpiredCodeException')) {
+    return 'Code de vérification expiré. Demandez-en un nouveau.';
+  }
+  return message;
+}
+
 export default function Login({ onSignedIn }) {
-  const [mode, setMode] = useState('signin'); // 'signin' | 'signup' | 'confirm' | 'totp'
+  const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -51,6 +80,8 @@ export default function Login({ onSignedIn }) {
         const step = result.nextStep.signInStep;
         if (step === 'CONFIRM_SIGN_IN_WITH_TOTP_CODE') {
           setMode('totp');
+        } else if (step === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+          setMode('newPassword');
         } else if (step === 'CONFIRM_SIGN_UP') {
           setMode('confirm');
         } else if (step === 'DONE') {
@@ -59,7 +90,7 @@ export default function Login({ onSignedIn }) {
           setError(`Étape de connexion non gérée : ${step}`);
         }
       } catch (err) {
-        setError(err.message ?? String(err));
+        setError(formatAuthError(err));
       } finally {
         setLoading(false);
       }
@@ -89,7 +120,25 @@ export default function Login({ onSignedIn }) {
         await signIn({ username: email, password });
         onSignedIn();
       } catch (err) {
-        setError(err.message ?? String(err));
+        setError(formatAuthError(err));
+      } finally {
+        setLoading(false);
+      }
+    } else if (mode === 'newPassword') {
+      if (newPassword !== confirmNewPassword) {
+        setError('Les deux mots de passe ne correspondent pas.');
+        return;
+      }
+      if (newPassword.length < 8) {
+        setError('Le mot de passe doit contenir au moins 8 caractères.');
+        return;
+      }
+      setLoading(true);
+      try {
+        await confirmSignIn({ challengeResponse: newPassword });
+        onSignedIn();
+      } catch (err) {
+        setError(formatAuthError(err));
       } finally {
         setLoading(false);
       }
@@ -127,6 +176,11 @@ export default function Login({ onSignedIn }) {
         <p className="info">
           Saisis le code à 6 chiffres généré par ton application
           d'authentification (TOTP).
+        </p>
+      ) : mode === 'newPassword' ? (
+        <p className="info">
+          Ce compte a été créé avec un mot de passe temporaire.
+          Définis ton nouveau mot de passe ci-dessous.
         </p>
       ) : (
         <p className="info">
@@ -185,6 +239,33 @@ export default function Login({ onSignedIn }) {
           </label>
         )}
 
+        {mode === 'newPassword' && (
+          <>
+            <label>
+              Nouveau mot de passe
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </label>
+            <label>
+              Confirmer le nouveau mot de passe
+              <input
+                type="password"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </label>
+          </>
+        )}
+
         {(mode === 'confirm' || mode === 'totp') && (
           <label>
             Code de vérification
@@ -201,16 +282,18 @@ export default function Login({ onSignedIn }) {
 
         {error && <p className="error">{error}</p>}
 
-        <button type="submit" disabled={loading}>
+<button type="submit" disabled={loading}>
           {loading
             ? 'Patientez…'
             : mode === 'signin'
-              ? 'Se connecter'
-              : mode === 'signup'
-                ? 'Créer le compte'
-                : mode === 'confirm'
-                  ? 'Valider le code'
-                  : 'Valider le code TOTP'}
+            ? 'Se connecter'
+            : mode === 'signup'
+            ? 'Créer le compte'
+            : mode === 'confirm'
+            ? 'Valider le code'
+            : mode === 'newPassword'
+            ? 'Définir le mot de passe'
+            : 'Valider le code TOTP'}
         </button>
       </form>
 
@@ -231,6 +314,10 @@ export default function Login({ onSignedIn }) {
           </>
         ) : mode === 'totp' ? (
           <button className="link" onClick={() => { setMode('signin'); setError(''); }}>
+            Revenir à la connexion
+          </button>
+        ) : mode === 'newPassword' ? (
+          <button className="link" onClick={() => { setMode('signin'); setError(''); setNewPassword(''); setConfirmNewPassword(''); }}>
             Revenir à la connexion
           </button>
         ) : (
