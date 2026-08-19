@@ -119,7 +119,7 @@ export default function Security({ username }) {
               Scanner ce QR code avec l'application d'authentification, puis
               confirmer le code affiché.
             </p>
-            <QRCodeSVG value={setupUri} size={180} />
+            <QRCodeSVG className="totp-qr" value={setupUri} size={180} />
             <p className="muted break-all">{setupUri}</p>
             <form onSubmit={handleVerify}>
               <label>

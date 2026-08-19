@@ -187,6 +187,11 @@ input {
   width: 100%;
 }
 
+.totp-qr {
+  padding: 5px;
+  background-color: white;
+}
+
 .break-all {
   word-break: break-all;
 }
