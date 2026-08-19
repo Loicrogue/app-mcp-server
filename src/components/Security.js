@@ -39,7 +39,6 @@ export default function Security({ username }) {
   }, []);
 
   const totpEnabled = mfa?.enabled?.includes('TOTP') ?? false;
-  const totpPreferred = mfa?.preferred === 'TOTP';
   const isGoogleAccount = username?.startsWith('google_');
 
   async function handleStartSetup() {
@@ -111,7 +110,6 @@ export default function Security({ username }) {
           1Password, Authy…) pour protéger la connexion. Le code à 6 chiffres
           sera demandé à chaque connexion.
         </p>
-        <p className="muted">État renvoyé par Cognito : {JSON.stringify(mfa)}</p>
 
         {setupUri ? (
           <div className="totp-setup">
@@ -120,7 +118,6 @@ export default function Security({ username }) {
               confirmer le code affiché.
             </p>
             <QRCodeSVG className="totp-qr" value={setupUri} size={180} />
-            <p className="muted break-all">{setupUri}</p>
             <form onSubmit={handleVerify}>
               <label>
                 Code à 6 chiffres
@@ -145,9 +142,7 @@ export default function Security({ username }) {
           </div>
         ) : totpEnabled ? (
           <div>
-            <p className="muted">
-              TOTP actif ({totpPreferred ? 'préféré' : 'activé'}).
-            </p>
+            <h4>TOTP activé</h4>
             <button onClick={handleDisable}>Désactiver le TOTP</button>
           </div>
         ) : (
