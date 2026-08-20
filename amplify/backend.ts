@@ -1,4 +1,4 @@
-import { defineBackend } from '@aws-amplify/backend';
+import { defineBackend, secret } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
 import { mcpServerFunction } from './functions/mcp-server/resource';
@@ -56,6 +56,11 @@ mcpLambda.addEnvironment(
   backend.auth.resources.userPoolClient.userPoolClientId
 );
 mcpLambda.addEnvironment('CLAUDE_CLIENT_ID', claudeClient.userPoolClientId);
+
+// Clé API Odoo : secret Amplify (SSM). À créer avant le déploiement avec
+// `npx ampx sandbox secret set ODOO_API_KEY --profile lhoarau`. La valeur est
+// résolue à la synthèse et injectée dans l'environnement de la Lambda.
+backend.mcpServerFunction.addEnvironment('ODOO_API_KEY', secret('ODOO_API_KEY'));
 
 // Readiness probe du Lambda Web Adapter : sans lui, la première requête
 // d'une instance froide arrive avant que l'application écoute sur son port

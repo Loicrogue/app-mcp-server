@@ -1,20 +1,45 @@
-import { useState } from 'react';
-import { mcpCallTool } from '../mcp';
+import { useState, useEffect } from 'react';
+import { mcpCallTool, mcpListTools } from '../mcp';
 
-// Petite console de test : appelle l'outil "ping" du serveur MCP.
+// Console de test générique : choix de l'outil MCP + arguments JSON.
+// La liste des outils est chargée depuis le serveur (tools/list).
 export default function TestConsole() {
-  const [message, setMessage] = useState('');
+  const [tools, setTools] = useState([]);
+  const [tool, setTool] = useState('ping');
+  const [args, setArgs] = useState('');
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  async function handlePing(e) {
+  useEffect(() => {
+    mcpListTools()
+      .then((res) => {
+        const names = (res.tools ?? []).map((t) => t.name);
+        setTools(names);
+        setTool((prev) =>
+          names.length > 0 && !names.includes(prev) ? names[0] : prev
+        );
+      })
+      .catch((err) => setError(err.message ?? String(err)));
+  }, []);
+
+  async function handleCall(e) {
     e.preventDefault();
     setError('');
     setResult('');
     setLoading(true);
+
+    let parsed;
     try {
-      const res = await mcpCallTool('ping', { message: message || undefined });
+      parsed = args.trim() ? JSON.parse(args) : {};
+    } catch (err) {
+      setError(`Arguments JSON invalides : ${err.message}`);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await mcpCallTool(tool, parsed);
       const text = res.content
         ?.filter((c) => c.type === 'text')
         .map((c) => c.text)
@@ -30,18 +55,32 @@ export default function TestConsole() {
   return (
     <div>
       <h2>Console de test</h2>
-      <form onSubmit={handlePing} className="console-form">
+      <form onSubmit={handleCall} className="console-form">
         <label>
-          Message (facultatif)
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Ex : bonjour depuis l'interface"
+          Outil
+          <select value={tool} onChange={(e) => setTool(e.target.value)}>
+            {tools.length > 0 ? (
+              tools.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))
+            ) : (
+              <option value="ping">ping</option>
+            )}
+          </select>
+        </label>
+        <label>
+          Arguments (JSON, facultatif)
+          <textarea
+            value={args}
+            onChange={(e) => setArgs(e.target.value)}
+            rows={6}
+            placeholder='{"domain": [["display_name", "ilike", "a%"]], "fields": ["display_name"], "limit": 20}'
           />
         </label>
         <button type="submit" disabled={loading}>
-          {loading ? 'Appel en cours…' : 'Appeler l\'outil ping'}
+          {loading ? 'Appel en cours…' : `Appeler ${tool}`}
         </button>
       </form>
 

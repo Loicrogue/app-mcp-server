@@ -16,7 +16,7 @@ export const registry: { servers: McpServerEntry[] } = {
       id: "mcp-server-core",
       url: `${CORE_BASE_URL}/mcp`,
       description: "Serveur MCP principal du projet",
-      tools: ["ping", "get-servers-registry"],
+      tools: ["ping", "get-servers-registry", "odoo-search-partners"],
       ressources: ["registre des serveurs MCP"],
     },
     // Ajoute une entrée ici pour chaque nouveau serveur (ex: VoIP), une fois qu'il existe.

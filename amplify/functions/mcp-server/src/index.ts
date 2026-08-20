@@ -6,6 +6,7 @@ import { getOAuthProtectedResourceMetadataUrl } from "@modelcontextprotocol/sdk/
 import type { RequestHandler } from "express";
 import { z } from "zod";
 import { registry } from "./registry.js";
+import { odooSearchRead } from "./odoo.js";
 import { verifyAccessToken } from "./auth.js";
 import { getAuthRouter } from "./oauth.js";
 import { MCP_ORIGIN, MCP_SERVER_URL } from "./config.js";
@@ -43,6 +44,28 @@ function buildServer() {
     async () => ({
       content: [{ type: "text", text: registryPayload() }],
     })
+  );
+
+  server.registerTool(
+    "odoo-search-partners",
+    {
+      title: "odoo-search-partners",
+      description:
+        "Recherche des contacts (res.partner) dans Odoo via l'API publique. Reproduit l'appel de test : display_name ilike 'a%', champs display_name, limit 20. La clé API est lue depuis la variable ODOO_API_KEY.",
+      inputSchema: {
+        domain: z.array(z.array(z.any())).optional(),
+        fields: z.array(z.string()).optional(),
+        limit: z.number().int().positive().optional(),
+      },
+    },
+    async ({ domain, fields, limit }) => {
+      const data = await odooSearchRead("res.partner", {
+        domain: domain ?? [["display_name", "ilike", "a%"]],
+        fields: fields ?? ["display_name"],
+        limit: limit ?? 20,
+      });
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    }
   );
 
   server.registerResource(
