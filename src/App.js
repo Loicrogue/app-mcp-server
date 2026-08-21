@@ -58,6 +58,9 @@ function App() {
 
   return (
     <div className="app">
+      <button className="theme-toggle" onClick={toggleTheme}>
+        {theme === 'light' ? '☀️' : '🌙'}
+      </button>
       <header className="topbar">
         <span className="brand">Serveur MCP</span>
         <span className="muted">Connecté : {user.signInDetails ? user.signInDetails.loginId: user.username}</span>
@@ -82,9 +85,6 @@ function App() {
           </button>
           <button className="link" onClick={handleSignOut}>
             Se déconnecter
-          </button>
-          <button onClick={toggleTheme}>
-            {theme === 'light' ? '☀️' : '🌙'}
           </button>
         </nav>
       </header>

@@ -6,6 +6,7 @@
   --text: #0e0f0f;
   --muted: #2c3544;
   --accent: #384bf8;
+  --glow: rgba(56, 75, 248, 0.55);
   --danger: #f87171;
 }
 
@@ -17,6 +18,7 @@
   --text: #e2e8f0;
   --muted: #94a3b8;
   --accent: #38bdf8;
+  --glow: rgba(56, 189, 248, 0.55);
   --danger: #f87171;
 }
 
@@ -212,6 +214,37 @@ input {
 }
 
 .console-form {
+  gap: 22px;
+}
+
+.tool-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tool-chip {
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+.tool-chip.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow:
+    0 0 12px var(--glow),
+    inset 0 0 6px var(--glow);
+}
+
+.call-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.call-row input {
   max-width: 420px;
 }
 

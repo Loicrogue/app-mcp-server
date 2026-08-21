@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { mcpCallTool, mcpListTools } from '../mcp';
 
-// Console de test : choix de l'outil MCP puis appel sans argument.
-// Tous les paramètres (model, domain, fields, limit) sont définis
-// en valeurs par défaut dans le code du serveur (src/index.ts).
+// Console de test : choix de l'outil MCP (liste de puces cliquables,
+// description affichée au survol) puis appel. Seul `ping` accepte un
+// argument libre (`message`) ; les autres outils utilisent les valeurs
+// par défaut définies dans le code du serveur (src/index.ts).
 export default function TestConsole() {
   const [tools, setTools] = useState([]);
   const [tool, setTool] = useState('ping');
+  const [message, setMessage] = useState('');
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,10 +16,15 @@ export default function TestConsole() {
   useEffect(() => {
     mcpListTools()
       .then((res) => {
-        const names = (res.tools ?? []).map((t) => t.name);
-        setTools(names);
+        const list = (res.tools ?? []).map((t) => ({
+          name: t.name,
+          description: t.description ?? '',
+        }));
+        setTools(list);
         setTool((prev) =>
-          names.length > 0 && !names.includes(prev) ? names[0] : prev
+          list.length > 0 && !list.some((t) => t.name === prev)
+            ? list[0].name
+            : prev
         );
       })
       .catch((err) => setError(err.message ?? String(err)));
@@ -30,7 +37,9 @@ export default function TestConsole() {
     setLoading(true);
 
     try {
-      const res = await mcpCallTool(tool, {});
+      const args =
+        tool === 'ping' && message.trim() ? { message: message.trim() } : {};
+      const res = await mcpCallTool(tool, args);
       const text = res.content
         ?.filter((c) => c.type === 'text')
         .map((c) => c.text)
@@ -47,23 +56,37 @@ export default function TestConsole() {
     <div>
       <h2>Console de test</h2>
       <form onSubmit={handleCall} className="console-form">
-        <label>
-          Outil
-          <select value={tool} onChange={(e) => setTool(e.target.value)}>
-            {tools.length > 0 ? (
-              tools.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))
-            ) : (
-              <option value="ping">ping</option>
-            )}
-          </select>
-        </label>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Appel en cours…' : `Appeler ${tool}`}
-        </button>
+        <div className="tool-list" role="listbox" aria-label="Outils MCP">
+          {(tools.length > 0 ? tools : [{ name: 'ping', description: '' }]).map(
+            (t) => (
+              <button
+                key={t.name}
+                type="button"
+                role="option"
+                aria-selected={t.name === tool}
+                title={t.description || undefined}
+                className={`tool-chip${t.name === tool ? ' selected' : ''}`}
+                onClick={() => setTool(t.name)}
+              >
+                {t.name}
+              </button>
+            )
+          )}
+        </div>
+        <div className="call-row">
+          {tool === 'ping' && (
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Message (optionnel)"
+              aria-label="Message pour ping"
+            />
+          )}
+          <button type="submit" disabled={loading}>
+            {loading ? 'Appel en cours…' : `Appeler ${tool}`}
+          </button>
+        </div>
       </form>
 
       {result && (
