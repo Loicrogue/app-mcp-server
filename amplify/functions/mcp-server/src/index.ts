@@ -51,7 +51,7 @@ function buildServer() {
     {
       title: "odoo-search-partners",
       description:
-        "Recherche des contacts (res.partner) dans Odoo via l'API publique. Reproduit l'appel de test : display_name ilike 'a%', champs display_name, limit 20. La clé API est lue depuis la variable ODOO_API_KEY.",
+        "Recherche des contacts (res.partner) dans Odoo via l'API publique.",
       inputSchema: {
         domain: z.array(z.array(z.any())).optional(),
         fields: z.array(z.string()).optional(),
@@ -62,6 +62,31 @@ function buildServer() {
       const data = await odooSearchRead("res.partner", {
         domain: domain ?? [["display_name", "ilike", "a%"]],
         fields: fields ?? ["display_name"],
+        limit: limit ?? 20,
+      });
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    }
+  );
+
+  server.registerTool(
+    "odoo-search-read",
+    {
+      title: "odoo-search-read",
+      description:
+        "Lit le rapport des activités CRM (crm.activity.report) via l'API publique d'Odoo.",
+      inputSchema: {
+        model: z.string().optional(),
+        domain: z.array(z.array(z.any())).optional(),
+        fields: z.array(z.string()).optional(),
+        limit: z.number().int().positive().optional(),
+      },
+    },
+    async ({ model, domain, fields, limit }) => {
+      const data = await odooSearchRead(model ?? "crm.activity.report", {
+        domain: domain ?? [["lead_type", "=", "opportunity"]],
+        fields:
+          fields ??
+          ["id", "lead_id", "partner_id", "author_id", "mail_activity_type_id", "date", "body", "lead_type", "won_status"],
         limit: limit ?? 20,
       });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };

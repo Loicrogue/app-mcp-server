@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { mcpCallTool, mcpListTools } from '../mcp';
 
-// Console de test générique : choix de l'outil MCP + arguments JSON.
-// La liste des outils est chargée depuis le serveur (tools/list).
+// Console de test : choix de l'outil MCP puis appel sans argument.
+// Tous les paramètres (model, domain, fields, limit) sont définis
+// en valeurs par défaut dans le code du serveur (src/index.ts).
 export default function TestConsole() {
   const [tools, setTools] = useState([]);
   const [tool, setTool] = useState('ping');
-  const [args, setArgs] = useState('');
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,17 +29,8 @@ export default function TestConsole() {
     setResult('');
     setLoading(true);
 
-    let parsed;
     try {
-      parsed = args.trim() ? JSON.parse(args) : {};
-    } catch (err) {
-      setError(`Arguments JSON invalides : ${err.message}`);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await mcpCallTool(tool, parsed);
+      const res = await mcpCallTool(tool, {});
       const text = res.content
         ?.filter((c) => c.type === 'text')
         .map((c) => c.text)
@@ -69,15 +60,6 @@ export default function TestConsole() {
               <option value="ping">ping</option>
             )}
           </select>
-        </label>
-        <label>
-          Arguments (JSON, facultatif)
-          <textarea
-            value={args}
-            onChange={(e) => setArgs(e.target.value)}
-            rows={6}
-            placeholder='{"domain": [["display_name", "ilike", "a%"]], "fields": ["display_name"], "limit": 20}'
-          />
         </label>
         <button type="submit" disabled={loading}>
           {loading ? 'Appel en cours…' : `Appeler ${tool}`}
