@@ -47,9 +47,9 @@ function buildServer() {
   );
 
   server.registerTool(
-    "odoo-search-partners",
+    "odoo-contact",
     {
-      title: "odoo-search-partners",
+      title: "odoo-contact",
       description:
         "Recherche des contacts (res.partner) via l'API publique d'Odoo.",
       inputSchema: {
@@ -69,9 +69,9 @@ function buildServer() {
   );
 
   server.registerTool(
-    "odoo-search-read",
+    "odoo-crm-activity-analysis",
     {
-      title: "odoo-search-read",
+      title: "odoo-crm-activity-analysis",
       description:
         "Lit le rapport des activités CRM (crm.activity.report) via l'API publique d'Odoo.",
       inputSchema: {
