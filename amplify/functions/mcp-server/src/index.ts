@@ -51,7 +51,7 @@ function buildServer() {
     {
       title: "odoo-search-partners",
       description:
-        "Recherche des contacts (res.partner) dans Odoo via l'API publique.",
+        "Recherche des contacts (res.partner) via l'API publique d'Odoo.",
       inputSchema: {
         domain: z.array(z.array(z.any())).optional(),
         fields: z.array(z.string()).optional(),
