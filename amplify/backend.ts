@@ -56,6 +56,9 @@ mcpLambda.addEnvironment(
   backend.auth.resources.userPoolClient.userPoolClientId
 );
 mcpLambda.addEnvironment('CLAUDE_CLIENT_ID', claudeClient.userPoolClientId);
+// URL canonique du serveur (RFC 8707) : injectée pour que config.ts suive
+// automatiquement le Function URL de la branche déployée, sans hardcoder.
+mcpLambda.addEnvironment('MCP_SERVER_URL', `${mcpFunctionUrl.url}mcp`);
 
 // Clé API Odoo : secret Amplify (SSM). À créer avant le déploiement avec
 // `npx ampx sandbox secret set ODOO_API_KEY --profile lhoarau`. La valeur est
