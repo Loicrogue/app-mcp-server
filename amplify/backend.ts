@@ -101,10 +101,6 @@ const mcpFunctionUrl = mcpLambda.addFunctionUrl({
   },
 });
 
-// URL canonique du serveur (RFC 8707) : injectée pour que config.ts suive
-// automatiquement le Function URL de la branche déployée, sans hardcoder.
-mcpLambda.addEnvironment('MCP_SERVER_URL', `${mcpFunctionUrl.url}mcp`);
-
 backend.addOutput({
   custom: {
     mcpServerUrl: mcpFunctionUrl.url,
