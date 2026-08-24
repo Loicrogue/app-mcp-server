@@ -60,7 +60,7 @@ function buildServer() {
     },
     async ({ domain, fields, limit }) => {
       const data = await odooSearchRead("res.partner", {
-        domain: domain ?? [["display_name", "ilike", "a%"]],
+        domain: domain ?? [],
         fields: fields ?? ["display_name"],
         limit: limit ?? 20,
       });
@@ -87,6 +87,46 @@ function buildServer() {
         fields:
           fields ??
           ["id", "lead_id", "partner_id", "author_id", "mail_activity_type_id", "date", "body", "lead_type", "won_status"],
+        limit: limit ?? 20,
+      });
+      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
+    }
+  );
+
+  server.registerTool(
+    "odoo-calendar-events",
+    {
+      title: "odoo-calendar-events",
+      description:
+        "Liste les événements du calendrier Odoo (calendar.event) via l'API publique d'Odoo.",
+      inputSchema: {
+        domain: z.array(z.array(z.any())).optional(),
+        fields: z.array(z.string()).optional(),
+        limit: z.number().int().positive().optional(),
+      },
+    },
+    async ({ domain, fields, limit }) => {
+      const data = await odooSearchRead("calendar.event", {
+        domain: domain ?? [],
+        fields:
+          fields ??
+          [
+            "display_name",
+            "name",
+            "display_time",
+            "start",
+            "stop",
+            "allday",
+            "duration",
+            "location",
+            "description",
+            "user_id",
+            "partner_ids",
+            "videocall_location",
+            "alarm_ids",
+            "privacy",
+            "recurrency",
+          ],
         limit: limit ?? 20,
       });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
