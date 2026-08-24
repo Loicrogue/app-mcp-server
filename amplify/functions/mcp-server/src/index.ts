@@ -61,7 +61,20 @@ function buildServer() {
     async ({ domain, fields, limit }) => {
       const data = await odooSearchRead("res.partner", {
         domain: domain ?? [],
-        fields: fields ?? ["display_name"],
+        fields: fields ?? [
+          "display_name",
+          "name",
+          "email",
+          "phone",
+          "street",
+          "city",
+          "zip",
+          "country_id",
+          "lang",
+          "is_company",
+          "user_id",
+          "website"
+        ],
         limit: limit ?? 20,
       });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -84,9 +97,18 @@ function buildServer() {
     async ({ model, domain, fields, limit }) => {
       const data = await odooSearchRead(model ?? "crm.activity.report", {
         domain: domain ?? [["lead_type", "=", "opportunity"]],
-        fields:
-          fields ??
-          ["id", "lead_id", "partner_id", "author_id", "mail_activity_type_id", "date", "body", "lead_type", "won_status"],
+        fields: fields ?? 
+        [
+          "lead_id",
+          "partner_id",
+          "author_id",
+          "mail_activity_type_id",
+          "date",
+          "date_deadline",
+          "body",
+          "lead_type",
+          "won_status"
+        ],
         limit: limit ?? 20,
       });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
@@ -108,8 +130,7 @@ function buildServer() {
     async ({ domain, fields, limit }) => {
       const data = await odooSearchRead("calendar.event", {
         domain: domain ?? [],
-        fields:
-          fields ??
+        fields: fields ??
           [
             "display_name",
             "name",
