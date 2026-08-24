@@ -6,6 +6,7 @@ frontend:
         - npm install --legacy-peer-deps --cache .npm --prefer-offline
     build:
       commands:
+        - cp amplify_outputs.json src/amplify_outputs.json
         - npm run build
   artifacts:
     baseDirectory: build
