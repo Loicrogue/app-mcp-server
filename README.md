@@ -1,70 +1,131 @@
-# Getting Started with Create React App
+# Serveur MCP — Dattico
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Serveur [MCP](https://modelcontextprotocol.io) sécurisé, déployé sur AWS avec Amplify Gen 2. Il expose les données Odoo (contacts, activités CRM, calendrier) à des clients MCP comme Claude, derrière une authentification Cognito (OAuth 2.1 + PKCE).
 
-## Available Scripts
+Le dépôt contient aussi une **console web React** permettant de se connecter, de parcourir le catalogue d'outils et de les tester en direct.
 
-In the project directory, you can run:
+## Architecture
 
-### `npm start`
+```mermaid
+flowchart LR
+    subgraph clients["Clients"]
+        web["Console React<br/>(Amplify Hosting)"]
+        claude["Connecteur Claude<br/>(claude.ai / claude.com)"]
+    end
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+    subgraph aws["AWS — eu-central-1"]
+        url["Lambda Function URL<br/>authType NONE + CORS"]
+        lambda["Lambda mcp-server<br/>Express + Web Adapter<br/>POST /mcp · Streamable HTTP"]
+        cognito["Cognito User Pool<br/>email · SSO Google · TOTP"]
+    end
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+    odoo["API Odoo (JSON)<br/>search_read"]
 
-### `npm test`
+    web -- "JSON-RPC + Bearer" --> url
+    claude -- "OAuth 2.1 + PKCE" --> url
+    url --> lambda
+    lambda -- "vérif. JWT (JWKS)" --> cognito
+    lambda -- "proxy /authorize · /token" --> cognito
+    lambda -- "Bearer ODOO_API_KEY" --> odoo
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- La Lambda exécute une application **Express** derrière le *Lambda Web Adapter* ; la Function URL est publique, l'autorisation est faite **dans** la Lambda (`requireBearerAuth` + vérification du JWT Cognito).
+- Le serveur MCP est **stateless** : une instance `McpServer` neuve à chaque requête, pas de session.
+- La Lambda expose aussi une **façade OAuth 2.1** (`/.well-known/*`, `/authorize`, `/token`) qui proxifie Cognito — aucun token n'est stocké côté serveur.
 
-### `npm run build`
+## Stack
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **Frontend** — React 19, Create React App, `aws-amplify` 6, CSS custom (thème clair/sombre)
+- **Backend** — AWS Amplify Gen 2 (CDK), Lambda Node.js 24 + AWS Lambda Web Adapter, Express 5
+- **MCP** — `@modelcontextprotocol/sdk`, transport Streamable HTTP, schémas `zod`
+- **Auth** — Cognito (email, SSO Google, MFA TOTP), OAuth 2.1 + PKCE, JWT vérifié avec `jose`
+- **Données** — API JSON publique d'Odoo (`search_read`)
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Outils MCP exposés
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| Outil | Rôle |
+| --- | --- |
+| `ping` | Test de disponibilité du serveur |
+| `get-servers-registry` | Liste les serveurs MCP connus et leurs outils |
+| `odoo-contact` | Recherche de contacts (`res.partner`) |
+| `odoo-crm-activity-analysis` | Rapport d'activités CRM (`crm.activity.report`) |
+| `odoo-calendar-events` | Événements du calendrier (`calendar.event`) |
 
-### `npm run eject`
+Les trois outils Odoo acceptent `domain`, `fields` et `limit` optionnels ; les valeurs par défaut sont définies dans [index.ts](amplify/functions/mcp-server/src/index.ts). Le registre est également disponible comme ressource MCP `registry://servers`.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Démarrage local
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Prérequis : Node.js 20+, un profil AWS configuré, et **pas** de CLI Amplify Gen 1 installé (voir [GUIDE.md](GUIDE.md), étape 0).
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+```bash
+npm install --legacy-peer-deps
+```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Lancer le backend en sandbox (déploie Cognito, la Lambda MCP et génère `amplify_outputs.json`) :
 
-## Learn More
+```bash
+npx ampx sandbox --profile <votre-profil>
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Copier les outputs générés là où le frontend les lit :
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+cp amplify_outputs.json src/amplify_outputs.json
+```
 
-### Code Splitting
+Démarrer la console web sur http://localhost:3000 :
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+```bash
+npm start
+```
 
-### Analyzing the Bundle Size
+> `amplify_outputs.json` est généré et ignoré par git. Il contient notamment `custom.mcpServerUrl` (l'URL de la Lambda MCP, utilisée par [src/awsConfig.js](src/awsConfig.js)) et `custom.claudeClientId`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Secrets
 
-### Making a Progressive Web App
+Trois secrets sont requis et doivent être définis via Amplify (jamais en clair dans le code) :
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```bash
+npx ampx sandbox secret set ODOO_API_KEY --profile <votre-profil>
+```
 
-### Advanced Configuration
+| Secret | Usage |
+| --- | --- |
+| `ODOO_API_KEY` | Authentification auprès de l'API Odoo |
+| `GOOGLE_CLIENT_ID` | SSO Google (Cognito) |
+| `GOOGLE_CLIENT_SECRET` | SSO Google (Cognito) |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Déploiement
 
-### Deployment
+Le déploiement est piloté par Amplify Hosting via [amplify.yml](amplify.yml), en deux pipelines :
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- **backend** — installe et compile la Lambda MCP (`npm run build --prefix amplify/functions/mcp-server`) puis déploie le stack avec `ampx pipeline-deploy`.
+- **frontend** — copie `amplify_outputs.json` dans `src/` et produit le build CRA dans `build/`.
 
-### `npm run build` fails to minify
+## Structure du dépôt
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+```
+amplify/
+  auth/resource.ts              Cognito (email, Google, TOTP)
+  data/resource.ts              modèle de données (démo)
+  backend.ts                    assemblage, Function URL, variables d'env
+  functions/mcp-server/
+    resource.ts                 définition de la Lambda (runtime, layer, bundling)
+    run.sh                      point d'entrée du Web Adapter
+    src/index.ts                app Express, outils et ressources MCP
+    src/auth.ts                 vérification des tokens Cognito
+    src/oauth.ts                façade OAuth 2.1 / proxy Cognito
+    src/odoo.ts                 appels search_read + résolution des secrets
+    src/registry.ts             registre des serveurs MCP
+    src/config.ts               configuration runtime
+src/
+  mcp.js                        client JSON-RPC vers /mcp
+  awsConfig.js                  configuration Amplify + URL du serveur
+  components/                   Catalogue, TestConsole, Security, Login
+amplify.yml                     pipelines Amplify Hosting
+GUIDE.md                        guide de construction pas-à-pas
+```
+
+## Pour aller plus loin
+
+[GUIDE.md](GUIDE.md) reprend l'intégralité du projet étape par étape (création du backend, compilation du serveur MCP, SSO Google et MFA TOTP, sécurisation OAuth de l'endpoint, configuration validée du connecteur Claude, limites connues et dépannage).
